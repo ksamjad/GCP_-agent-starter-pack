@@ -1,0 +1,9 @@
+# For the Agent Development Kit
+google-cloud-aiplatform
+google-adk
+
+# For the web server
+flask
+
+# For making API calls in the weather tool
+requests
