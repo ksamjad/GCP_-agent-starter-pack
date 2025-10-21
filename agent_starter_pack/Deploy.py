@@ -1,5 +1,5 @@
 adk deploy agent_engine \
-  --project=jwmt-ade-agentspace \
+  --project=wmt-ade-agentspace \
   --region=us-central1 \
   --staging_bucket=gs://apex-agentengine-staging \
   --display_name=BQToolsOAUTHAgentTEST \
