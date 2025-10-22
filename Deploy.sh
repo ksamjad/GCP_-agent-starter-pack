@@ -1,5 +1,3 @@
-export TMPDIR="C:/Temp"
-mkdir -p "$TMPDIR"
 adk deploy agent_engine \
   --project=wmt-ade-agentspace-dev \
   --region=us-central1 \
