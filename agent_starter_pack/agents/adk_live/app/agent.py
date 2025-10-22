@@ -23,7 +23,7 @@ os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
 os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "us-central1")
 os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 
-vertexai.init(project=project_id, location="us-central1")
+vertexai.init(project="wmt-ade-agentspace-dev", location="us-central1")
 
 
 def get_weather(query: str) -> str:
