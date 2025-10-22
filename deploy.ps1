@@ -1,6 +1,6 @@
 $env:TEMP = "C:\Temp"
 $env:TMP = "C:\Temp"
-adk deploy agent_engine `
+adk deploy agent_engine
   --project=wmt-ade-agentspace-dev `
   --region=us-central1 `
   --staging_bucket=gs://apex-agentengine-staging `
