@@ -1,3 +1,7 @@
+set TMP=C:\Temp
+set TEMP=C:\Temp
+
+
 adk deploy agent_engine \
   --project=wmt-ade-agentspace-dev \
   --region=us-central1 \
