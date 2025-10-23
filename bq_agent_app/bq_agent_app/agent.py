@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Define an appropriate credential type
-CREDENTIALS_TYPE = "OAUTH2"
+CREDENTIALS_TYPE = "ADC"
 
 # Write modes define BigQuery access control of agent:
 # ALLOWED: Tools will have full write capabilites.

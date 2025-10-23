@@ -1,0 +1,3 @@
+absl-py
+google-adk
+google-cloud-aiplatform

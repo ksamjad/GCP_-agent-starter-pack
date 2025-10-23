@@ -5,14 +5,14 @@ import os
 import sys
 
 # --- Configuration ---
-PROJECT_NUM = "994041294907"  # Replace with your GCP project ID
-APP_ID = "agentspace-demo_1753289817401"  # Replace with your App ID
-DISPLAY_NAME = "BQToolsOAUTHAgentTEST"  # Replace with your desired display name
-DESCRIPTION = "Basic ADK agent using built-in BQ tools w/OAUTH"  # Replace with your desired description
+PROJECT_NUM = "362440398011"  # Replace with your GCP project ID
+APP_ID = "agentspace-test-bot1_1744872480618"  # Replace with your App ID
+DISPLAY_NAME = "BigQuery Decoder"  # Replace with your desired display name
+DESCRIPTION = "Basic ADK agent to perform BQ Queries"  # Replace with your desired description
 TOOL_DESCRIPTION = "The agent can access bigquery datasets and tables, run queries and provide insights"  # Replace with your tool description
 #ADK_DEPLOYMENT_ID = "6386900318029873152"  # Replace with your ADK deployment ID
-ADK_DEPLOYMENT_ID = "1713008329749430272"  # OAUTH TEsting
-AUTH_ID = "MyOAuthID_ADKBQToolsOAUTHtest"  # Replace with your authorization ID
+ADK_DEPLOYMENT_ID = "2163614583091101696"  # OAUTH TEsting
+#AUTH_ID = "MyOAuthID_ADKBQToolsOAUTHtest"  # Replace with your authorization ID
 # --- End Configuration ---
 
 def get_gcloud_access_token():
@@ -40,8 +40,8 @@ def create_agent():
     """
     Creates an agent using the Google Discovery Engine API.
     """
-#   access_token = get_gcloud_access_token()
-    access_token = "ya29.a0AQQ_BDQPZ_4eMY5O_VNycDcdsE9zbn-re9zJDkssoaXi7p3nhvE9Sw9-jPahszDPf4hEYQGv44cIRUwsES2AfxBhhZYsx64P7tg-Xd06QcCUkw1bsxRIZ9jGHFZA1ZmAvDIedMo-OR9mE6PNCRokxplY1IB-fK6Fuqz0E8Zztg6135FW6EZMombsP8S3PFRE3N3xyXF0tTsXaCgYKAT0SARYSFQHGX2Mi0URXKQ4xR5BaqJUVP2p_eQ0211"
+  # access_token = get_gcloud_access_token()
+    access_token = "ya29.a0ATi6K2tHrBMlwp0Wbea1v2I8lUUTC_NfZK7EWA_50hbnJemUDnsjI6IZtdsvrG7BPeErKaDoYbcTcM4vDSo3YjZSO-OIjeQKHdNVJLTZeAXBSYF0b-__WwlqmI3mD3_UG0QZnzQvO35EY-n10R9A_pHPxG6iy-3J5aM2v0eyGiwEqEpMModaKL7D2mjEe37RnKDv8AEDd15aaCgYKAdoSARYSFQHGX2MillHiD4KkV15EwxYhOQHkYA0211"
 
     if not access_token:
         return
@@ -69,9 +69,9 @@ def create_agent():
                 "reasoning_engine":
                     f"projects/{PROJECT_NUM}/locations/us-central1/reasoningEngines/{ADK_DEPLOYMENT_ID}"
             },
-            "authorizations": [
-                f"projects/{PROJECT_NUM}/locations/global/authorizations/{AUTH_ID}"
-            ]
+          #  "authorizations": [
+          #      f"projects/{PROJECT_NUM}/locations/global/authorizations/{AUTH_ID}"
+         #   ]
         }
     }
 
