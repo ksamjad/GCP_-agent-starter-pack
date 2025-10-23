@@ -1,0 +1,6 @@
+absl-py
+msal
+requests
+python-dotenv
+google-adk
+google-cloud-aiplatform
