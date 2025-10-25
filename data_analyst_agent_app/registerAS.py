@@ -6,13 +6,14 @@ import sys
 
 # --- Configuration ---
 PROJECT_NUM = "362440398011"  # Replace with your GCP project ID
-APP_ID = "Agentspace -WalmartUS"  # Replace with your App ID
-DISPLAY_NAME = "Data Analyst Agent"  # Replace with your desired display name
+APP_ID = "agentspace-walmartus_1754500138149"  # Replace with your App ID
+DISPLAY_NAME = "Data Analyst Agent v1.0"  # Replace with your desired display name
 DESCRIPTION = "ADK agent to perform Data Analysis and Insights"  # Replace with your desired description
 TOOL_DESCRIPTION = "The agent can access bigquery datasets and tables, run queries and provide insights"  # Replace with your tool description
-#ADK_DEPLOYMENT_ID = "6386900318029873152"  # Replace with your ADK deployment ID
+# ADK_DEPLOYMENT_ID = "6386900318029873152"  # Replace with your ADK deployment ID
 ADK_DEPLOYMENT_ID = "6414168206398717952"  # OAUTH TEsting
-#AUTH_ID = "MyOAuthID_ADKBQToolsOAUTHtest"  # Replace with your authorization ID
+LOCATION = "us"  # Define the location variable
+# AUTH_ID = "MyOAuthID_ADKBQToolsOAUTHtest"  # Replace with your authorization ID
 # --- End Configuration ---
 
 def get_gcloud_access_token():
@@ -21,41 +22,56 @@ def get_gcloud_access_token():
     """
     try:
         # Check if gcloud is installed
-        subprocess.run(["gcloud", "--version"], check=True, capture_output=True, shell=True)
+        # Using shell=True can be a security risk if command components are from untrusted input.
+        # It's generally safer to pass arguments as a list if not using shell features.
+        # However, for simple commands like `gcloud --version`, it's often fine.
+        subprocess.run(["gcloud", "--version"], check=True, capture_output=True, text=True, shell=sys.platform == 'win32') # Use shell=True on Windows if needed
     except FileNotFoundError:
         print("Error: The 'gcloud' command-line tool is not found.")
         print("Please ensure it is installed and in your system's PATH.")
         return None
+    except subprocess.CalledProcessError as e:
+        print(f"Error verifying gcloud installation: {e.stderr.strip()}")
+        return None
 
     try:
         token_command = ["gcloud", "auth", "print-access-token"]
-        # The check=True parameter will raise an exception if the command fails
-        result = subprocess.run(token_command, check=True, capture_output=True, text=True, shell=True)
+        # Using text=True for cleaner output handling
+        result = subprocess.run(token_command, check=True, capture_output=True, text=True, shell=sys.platform == 'win32') # Use shell=True on Windows if needed
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         print(f"Error getting access token: {e.stderr.strip()}")
         return None
+    except Exception as e:
+        print(f"An unexpected error occurred while getting the token: {e}")
+        return None
+
 
 def create_agent():
     """
     Creates an agent using the Google Discovery Engine API.
     """
-  # access_token = get_gcloud_access_token()
-    access_token = "ya29.a0ATi6K2tHrBMlwp0Wbea1v2I8lUUTC_NfZK7EWA_50hbnJemUDnsjI6IZtdsvrG7BPeErKaDoYbcTcM4vDSo3YjZSO-OIjeQKHdNVJLTZeAXBSYF0b-__WwlqmI3mD3_UG0QZnzQvO35EY-n10R9A_pHPxG6iy-3J5aM2v0eyGiwEqEpMModaKL7D2mjEe37RnKDv8AEDd15aaCgYKAdoSARYSFQHGX2MillHiD4KkV15EwxYhOQHkYA0211"
+    access_token = get_gcloud_access_token()
+    # Hardcoded token for testing - comment out get_gcloud_access_token() call above if using this
+    # access_token = "YOUR_HARDCODED_TOKEN_HERE_IF_NEEDED"
 
     if not access_token:
+        print("Failed to obtain access token. Exiting.")
         return
 
+    # *** Use the regional endpoint ***
+    api_endpoint = f"https://us-discoveryengine.googleapis.com"
+
     url = (
-        f"https://discoveryengine.googleapis.com/v1alpha/projects/{PROJECT_NUM}/"
-        f"locations/global/collections/default_collection/engines/{APP_ID}/"
+        f"{api_endpoint}/v1alpha/projects/{PROJECT_NUM}/"
+        f"locations/{LOCATION}/collections/default_collection/engines/{APP_ID}/"
         f"assistants/default_assistant/agents"
     )
 
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
-        "X-Goog-User-Project": PROJECT_NUM,
+        "X-Goog-User-Project": PROJECT_NUM, # Ensure this header is needed and correct for your API call context
     }
 
     payload = {
@@ -69,9 +85,9 @@ def create_agent():
                 "reasoning_engine":
                     f"projects/{PROJECT_NUM}/locations/us-central1/reasoningEngines/{ADK_DEPLOYMENT_ID}"
             },
-          #  "authorizations": [
-          #      f"projects/{PROJECT_NUM}/locations/global/authorizations/{AUTH_ID}"
-         #   ]
+           # "authorizations": [
+           #      f"projects/{PROJECT_NUM}/locations/global/authorizations/{AUTH_ID}" # Note: Authorizations might still be global
+           # ]
         }
     }
 
@@ -88,7 +104,12 @@ def create_agent():
 
     except requests.exceptions.HTTPError as err:
         print(f"HTTP error occurred: {err}")
-        print(f"Response content: {response.text}")
+        # Attempt to print JSON error details if available
+        try:
+            error_details = err.response.json()
+            print(f"Error details: {json.dumps(error_details, indent=2)}")
+        except json.JSONDecodeError:
+            print(f"Response content (non-JSON): {err.response.text}")
     except requests.exceptions.ConnectionError as err:
         print(f"Error connecting to the server: {err}")
     except requests.exceptions.Timeout as err:

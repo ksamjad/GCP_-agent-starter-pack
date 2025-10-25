@@ -1,3 +1,4 @@
 absl-py
 google-adk
 google-cloud-aiplatform
+python==3.12
