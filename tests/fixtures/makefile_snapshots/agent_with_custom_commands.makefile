@@ -28,12 +28,20 @@ env-specific-task:
 	echo 'Cloud Run task'
 
 # ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+	uv run uvicorn test_custom.server:app --host localhost --port 8000 --reload
+
+# ==============================================================================
 # Backend Deployment Targets
 # ==============================================================================
 
 # Deploy the agent remotely
-# Usage: make backend [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
-backend:
+# Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
+deploy:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	gcloud beta run deploy test-custom \
 		--source . \
@@ -47,6 +55,9 @@ backend:
 		"COMMIT_SHA=$(shell git rev-parse HEAD)" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
+
+# Alias for 'make deploy' for backward compatibility
+backend: deploy
 
 
 # ==============================================================================

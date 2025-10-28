@@ -19,7 +19,15 @@ playground: build-frontend-if-needed
 	@echo "| 🌐 Access your app at: http://localhost:8000                               |"
 	@echo "| 💡 Try asking: Tell me about your capabilities|"
 	@echo "==============================================================================="
-	uv run python -m test_adk_live.utils.expose_app --mode local
+	uv run python -m test_adk_live.utils.expose_app --mode local --local-agent test_adk_live.agent.root_agent
+
+# ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+	uv run python -m test_adk_live.utils.expose_app --mode local --port 8000  --local-agent test_adk_live.agent.root_agent
 
 # ==============================================================================
 # ADK Live Commands
@@ -41,10 +49,6 @@ build-frontend-if-needed:
 	else \
 		echo "Frontend build is up to date. Skipping build..."; \
 	fi
-
-# Launch local development server with hot-reload
-local-backend:
-	uv run python -m test_adk_live.utils.expose_app --mode local --port 8000
 
 # Connect to remote deployed agent
 playground-remote: build-frontend-if-needed
@@ -80,10 +84,13 @@ playground-dev:
 # ==============================================================================
 
 # Deploy the agent remotely
-backend:
+deploy:
 	# Export dependencies to requirements file using uv export.
 	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
 	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run test_adk_live/agent_engine_app.py
+
+# Alias for 'make deploy' for backward compatibility
+backend: deploy
 
 
 # ==============================================================================

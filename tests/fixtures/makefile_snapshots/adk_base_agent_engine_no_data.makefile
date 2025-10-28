@@ -27,10 +27,13 @@ playground:
 # ==============================================================================
 
 # Deploy the agent remotely
-backend:
+deploy:
 	# Export dependencies to requirements file using uv export.
 	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
 	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run test_adk_base/agent_engine_app.py
+
+# Alias for 'make deploy' for backward compatibility
+backend: deploy
 
 
 # ==============================================================================
@@ -57,3 +60,13 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run mypy .
+
+# ==============================================================================
+# Gemini Enterprise Integration
+# ==============================================================================
+
+# Register the deployed agent to Gemini Enterprise
+# Usage: ID="projects/.../engines/xxx" make register-gemini-enterprise
+# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
+register-gemini-enterprise:
+	uvx --from agent-starter-pack agent-starter-pack-register-gemini-enterprise

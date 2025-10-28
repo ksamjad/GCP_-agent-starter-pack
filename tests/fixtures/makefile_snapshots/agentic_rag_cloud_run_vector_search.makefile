@@ -22,12 +22,20 @@ playground:
 	uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
 
 # ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+	uv run uvicorn test_rag.server:app --host localhost --port 8000 --reload
+
+# ==============================================================================
 # Backend Deployment Targets
 # ==============================================================================
 
 # Deploy the agent remotely
-# Usage: make backend [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
-backend:
+# Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
+deploy:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	gcloud beta run deploy test-rag \
 		--source . \
@@ -41,6 +49,9 @@ backend:
 		"COMMIT_SHA=$(shell git rev-parse HEAD),VECTOR_SEARCH_INDEX=test-rag-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT=test-rag-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-test-rag-vs" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
+
+# Alias for 'make deploy' for backward compatibility
+backend: deploy
 
 
 # ==============================================================================

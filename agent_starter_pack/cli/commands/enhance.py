@@ -94,16 +94,22 @@ def display_base_template_selection(current_base: str) -> str:
 
 
 def display_agent_directory_selection(
-    current_dir: pathlib.Path, detected_directory: str
+    current_dir: pathlib.Path, detected_directory: str, base_template: str | None = None
 ) -> str:
     """Display available directories and prompt for agent directory selection."""
+    # Determine the required object name based on base template
+    is_adk = base_template and "adk" in base_template.lower()
+    required_object = "root_agent" if is_adk else "agent"
+
     while True:
         console.print()
         console.print("📁 [bold]Agent Directory Selection[/bold]")
         console.print()
         console.print("Your project needs an agent directory containing:")
         console.print("  • [cyan]agent.py[/cyan] file with your agent logic")
-        console.print("  • [cyan]root_agent[/cyan] variable defined in agent.py")
+        console.print(
+            f"  • [cyan]{required_object}[/cyan] variable defined in agent.py"
+        )
         console.print()
         console.print("Choose where your agent code is located:")
 
@@ -358,6 +364,8 @@ def enhance(
             selected_base_template = display_base_template_selection(
                 original_base_template_name
             )
+            # Always set base_template to the selected value (even if unchanged)
+            base_template = selected_base_template
             if selected_base_template != original_base_template_name:
                 # Update CLI overrides with the selected base template
                 cli_overrides["base_template"] = selected_base_template
@@ -365,7 +373,6 @@ def enhance(
                 if agent_directory:
                     cli_overrides["settings"] = cli_overrides.get("settings", {})
                     cli_overrides["settings"]["agent_directory"] = agent_directory
-                base_template = selected_base_template
                 console.print(
                     f"✅ Selected base template: [cyan]{selected_base_template}[/cyan]"
                 )
@@ -421,7 +428,7 @@ def enhance(
         # Interactive agent directory selection if not provided via CLI and not auto-approved
         if not agent_directory and not auto_approve:
             selected_agent_directory = display_agent_directory_selection(
-                current_dir, detected_agent_directory
+                current_dir, detected_agent_directory, base_template
             )
             final_agent_directory = selected_agent_directory
             console.print(
@@ -573,9 +580,10 @@ def enhance(
         final_cli_overrides["base_template"] = base_template
 
     # For current directory templates, ensure agent_directory is included in cli_overrides
-    if template_path == pathlib.Path(".") and agent_directory:
+    # final_agent_directory is set from interactive selection or CLI/detection
+    if template_path == pathlib.Path(".") and final_agent_directory:
         final_cli_overrides["settings"] = final_cli_overrides.get("settings", {})
-        final_cli_overrides["settings"]["agent_directory"] = agent_directory
+        final_cli_overrides["settings"]["agent_directory"] = final_agent_directory
 
     # Call the create command with in-folder mode enabled
     ctx.invoke(

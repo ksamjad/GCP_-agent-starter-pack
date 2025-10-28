@@ -22,6 +22,14 @@ playground: build-frontend-if-needed
 	uv run uvicorn test_adk_live.server:app --host localhost --port 8000 --reload
 
 # ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+	uv run uvicorn test_adk_live.server:app --host localhost --port 8000 --reload
+
+# ==============================================================================
 # ADK Live Commands
 # ==============================================================================
 
@@ -42,36 +50,13 @@ build-frontend-if-needed:
 		echo "Frontend build is up to date. Skipping build..."; \
 	fi
 
-# Launch local development server with hot-reload
-local-backend:
-	uv run uvicorn test_adk_live.server:app --host localhost --port 8000 --reload
-
-# Start the frontend UI separately for development (requires backend running separately)
-ui:
-	(cd frontend && PORT=8501 npm start)
-
-# Launch dev playground with both frontend and backend hot-reload
-playground-dev:
-	@echo "==============================================================================="
-	@echo "| 🚀 Starting your agent playground in DEV MODE...                           |"
-	@echo "|                                                                             |"
-	@echo "| 🌐 Frontend: http://localhost:8501                                         |"
-	@echo "| 🌐 Backend:  http://localhost:8000                                         |"
-	@echo "| 💡 Try asking: Tell me about your capabilities|"
-	@echo "| 🔄 Both frontend and backend will auto-reload on changes                    |"
-	@echo "==============================================================================="
-	@echo "Starting backend server..."
-	$(MAKE) local-backend &
-	@echo "Starting frontend dev server..."
-	$(MAKE) ui
-
 # ==============================================================================
 # Backend Deployment Targets
 # ==============================================================================
 
 # Deploy the agent remotely
-# Usage: make backend [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
-backend:
+# Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
+deploy:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	gcloud beta run deploy test-adk-live \
 		--source . \
@@ -85,6 +70,9 @@ backend:
 		"COMMIT_SHA=$(shell git rev-parse HEAD)" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
+
+# Alias for 'make deploy' for backward compatibility
+backend: deploy
 
 
 # ==============================================================================

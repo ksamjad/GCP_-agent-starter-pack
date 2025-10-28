@@ -1,6 +1,6 @@
 [project]
 name = "agent-starter-pack"
-version = "0.16.0"
+version = "0.18.2"
 description = "CLI to bootstrap production-ready Google Cloud GenAI agent projects from templates."
 authors = [
     { name = "Google LLC", email = "agent-starter-pack@google.com" },
@@ -11,11 +11,12 @@ requires-python = ">=3.10"
 dependencies = [
     "click>=8.1.7",
     "cookiecutter>=2.6.0, <3.0.0",
-    "google-cloud-aiplatform>=1.87.0",
+    "google-cloud-aiplatform>=1.120.0",
     "rich>=13.7.0",
     "pyyaml>=6.0.1",
     "backoff>=2.2.1",
     "tomli>=1.1.0; python_version < \"3.11\"",
+    "requests>=2.31.0",
 ]
 
 [dependency-groups]
@@ -124,9 +125,15 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 agent-starter-pack = "agent_starter_pack.cli.main:cli"
+agent-starter-pack-register-gemini-enterprise = "agent_starter_pack.cli.utils.register_gemini_enterprise:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["agent_starter_pack", "llm.txt"]
+exclude = [
+    "agent_starter_pack/resources/idx",
+    "agent_starter_pack/resources/idx_ag",
+    "agent_starter_pack/resources/containers",
+]
 
 [tool.uv.workspace]
 members = ["temp"]

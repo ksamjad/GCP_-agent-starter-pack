@@ -100,7 +100,7 @@ def get_overwrite_folders(agent_directory: str) -> list[str]:
 
 TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
 DEPLOYMENT_FOLDERS = ["cloud_run", "agent_engine"]
-DEFAULT_FRONTEND = "streamlit"
+DEFAULT_FRONTEND = "None"
 
 
 def get_available_agents(deployment_target: str | None = None) -> dict:
@@ -579,8 +579,8 @@ def process_template(
             )
             # Get agent directory from config early for use in file copying
             # Load config early to get agent_directory
-            if is_remote:
-                early_config = remote_config or {}
+            if remote_config:
+                early_config = remote_config
             else:
                 template_path = pathlib.Path(template_dir)
                 early_config = load_template_config(template_path)
@@ -620,25 +620,16 @@ def process_template(
                 )
                 copy_data_ingestion_files(project_template, datastore)
 
-            # 4. Process frontend files
-            # Load template config
-            template_config = load_template_config(pathlib.Path(template_dir))
-            frontend_type = template_config.get("settings", {}).get(
-                "frontend_type", DEFAULT_FRONTEND
-            )
-            copy_frontend_files(frontend_type, project_template)
-            logging.debug(f"4. Processed frontend files for type: {frontend_type}")
-
-            # 6. Skip remote template files during cookiecutter processing
+            # 4. Skip remote template files during cookiecutter processing
             # Remote files will be copied after cookiecutter to avoid Jinja conflicts
             if is_remote and remote_template_path:
                 logging.debug(
-                    "6. Skipping remote template files during cookiecutter processing - will copy after templating"
+                    "4. Skipping remote template files during cookiecutter processing - will copy after templating"
                 )
 
             # Load and validate template config first
-            if is_remote:
-                config = remote_config or {}
+            if remote_config:
+                config = remote_config
             else:
                 template_path = pathlib.Path(template_dir)
                 config = load_template_config(template_path)
@@ -659,7 +650,14 @@ def process_template(
             # Use the already loaded config
             template_config = config
 
-            # 5. Copy agent-specific files to override base template (using final config)
+            # Process frontend files (after config is properly loaded with CLI overrides)
+            frontend_type = template_config.get("settings", {}).get(
+                "frontend_type", DEFAULT_FRONTEND
+            )
+            copy_frontend_files(frontend_type, project_template)
+            logging.debug(f"5. Processed frontend files for type: {frontend_type}")
+
+            # 6. Copy agent-specific files to override base template (using final config)
             if agent_path.exists():
                 agent_directory = get_agent_directory(template_config, cli_overrides)
 
@@ -673,7 +671,7 @@ def process_template(
                 target_agent_folder = project_template / agent_directory
                 if source_agent_folder.exists():
                     logging.debug(
-                        f"5. Copying agent folder {template_agent_directory} -> {agent_directory} with override"
+                        f"6. Copying agent folder {template_agent_directory} -> {agent_directory} with override"
                     )
                     copy_files(
                         source_agent_folder,
@@ -689,7 +687,7 @@ def process_template(
                     agent_folder = agent_path / folder
                     project_folder = project_template / folder
                     if agent_folder.exists():
-                        logging.debug(f"5. Copying {folder} folder with override")
+                        logging.debug(f"6. Copying {folder} folder with override")
                         copy_files(
                             agent_folder,
                             project_folder,
@@ -1182,13 +1180,10 @@ def copy_files(
 
 def copy_frontend_files(frontend_type: str, project_template: pathlib.Path) -> None:
     """Copy files from the specified frontend folder directly to project root."""
-    # Skip copying if frontend_type is "None"
-    if frontend_type == "None":
-        logging.debug("Frontend type is 'None', skipping frontend files")
+    # Skip copying if frontend_type is "None" or empty
+    if not frontend_type or frontend_type == "None":
+        logging.debug("Frontend type is 'None' or empty, skipping frontend files")
         return
-
-    # Use default frontend if none specified
-    frontend_type = frontend_type or DEFAULT_FRONTEND
 
     # Get the frontends directory path
     frontends_path = (
@@ -1201,9 +1196,12 @@ def copy_frontend_files(frontend_type: str, project_template: pathlib.Path) -> N
         copy_files(frontends_path, project_template, overwrite=True)
     else:
         logging.warning(f"Frontend type directory not found: {frontends_path}")
-        if frontend_type != DEFAULT_FRONTEND:
+        # Don't fall back to default if it's "None" - just skip
+        if DEFAULT_FRONTEND != "None":
             logging.info(f"Falling back to default frontend: {DEFAULT_FRONTEND}")
             copy_frontend_files(DEFAULT_FRONTEND, project_template)
+        else:
+            logging.debug("No default frontend configured, skipping frontend files")
 
 
 def copy_deployment_files(
