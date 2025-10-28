@@ -79,6 +79,20 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 {%- endif %}
 {%- endfor %}
 {%- endif %}
+{%- if cookiecutter.deployment_target == 'cloud_run' or (cookiecutter.deployment_target == 'agent_engine' and cookiecutter.is_adk_live) %}
+
+# ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
+{%- else %}
+	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --port 8000  --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
+{%- endif %}
+{%- endif %}
 {%- if cookiecutter.is_adk_live %}
 
 # ==============================================================================
@@ -101,17 +115,7 @@ build-frontend-if-needed:
 	else \
 		echo "Frontend build is up to date. Skipping build..."; \
 	fi
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-
-# Launch local development server with hot-reload
-local-backend:
-	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
-{%- endif %}
 {%- if cookiecutter.deployment_target == 'agent_engine' %}
-
-# Launch local development server with hot-reload
-local-backend:
-	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --port 8000  --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
 
 # Connect to remote deployed agent
 playground-remote: build-frontend-if-needed
@@ -123,6 +127,8 @@ playground-remote: build-frontend-if-needed
 	@echo "==============================================================================="
 	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode remote
 {%- endif %}
+{%- endif %}
+{%- if cookiecutter.is_adk_live and cookiecutter.deployment_target == 'agent_engine' %}
 
 # Start the frontend UI separately for development (requires backend running separately)
 ui:
@@ -150,9 +156,9 @@ playground-dev:
 
 # Deploy the agent remotely
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-# Usage: make backend [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
+# Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
 {%- endif %}
-backend:
+deploy:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	gcloud beta run deploy {{cookiecutter.project_name}} \
@@ -172,6 +178,9 @@ backend:
 	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
 	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run {{cookiecutter.agent_directory}}/agent_engine_app.py
 {%- endif %}
+
+# Alias for 'make deploy' for backward compatibility
+backend: deploy
 
 
 # ==============================================================================
@@ -222,3 +231,15 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run mypy .
+{%- if cookiecutter.is_adk and cookiecutter.deployment_target == 'agent_engine' %}
+
+# ==============================================================================
+# Gemini Enterprise Integration
+# ==============================================================================
+
+# Register the deployed agent to Gemini Enterprise
+# Usage: ID="projects/.../engines/xxx" make register-gemini-enterprise
+# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
+register-gemini-enterprise:
+	uvx --from agent-starter-pack agent-starter-pack-register-gemini-enterprise
+{%- endif %}
