@@ -1,13 +1,17 @@
 #!/bin/bash
 
 # --- Configuration (Updated with your info) ---
-SOURCE_PROJECT="www-ebs-ade-prod"
+SOURCE_PROJECT="wmt-ebs-ade-prod"
 SOURCE_DATASET="ade_ms_api_vw"
 DESTINATION_PROJECT="wmt-ade-agentspace-dev"
 DESTINATION_DATASET="ms_graph"
-# ----------------------------------------------
 
-# Array of STANDARD TABLES (from your image)
+# !!!--- UPDATE THIS ---!!!
+# Find this from the BigQuery UI (e.g., "US", "EU", "us-central1")
+LOCATION="US" 
+# ---------------------------------------------
+
+# Array of STANDARD TABLES
 TABLES=(
     "o365_usage_reports"
     "o365_auditing"
@@ -22,7 +26,7 @@ TABLES=(
     "azure_ad_directory_audits"
 )
 
-# Array of VIEWS (from your image)
+# Array of VIEWS
 VIEWS=(
     "ms_graph_365_userlicenses"
     "ms_graph_auditlogs"
@@ -41,11 +45,12 @@ VIEWS=(
 # Set the default project for the bq tool
 gcloud config set project $DESTINATION_PROJECT
 
-# 1. Copy all standard tables
+# 1. Copy all standard tables (with --location flag added)
 echo "--- Copying Standard Tables ---"
 for TABLE in "${TABLES[@]}"; do
     echo "Copying $TABLE..."
     bq cp \
+        --location=$LOCATION \
         "$SOURCE_PROJECT:$SOURCE_DATASET.$TABLE" \
         "$DESTINATION_PROJECT:$DESTINATION_DATASET.$TABLE"
 done

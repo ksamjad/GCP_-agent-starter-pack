@@ -1,14 +1,17 @@
 """Copy all tables from one BigQuery dataset to another.
 
-This script automates copying tables (including views) from a source
-BigQuery dataset to a destination dataset, potentially across projects.
+This script automates copying tables from a source BigQuery dataset to a
+destination dataset, potentially across projects. Native BigQuery views are
+materialized into destination tables with the same name, allowing the
+resulting dataset to contain only tables.
 
 Usage:
-    python scripts/copy_bigquery_dataset.py \
-        --source-project wmt-ebs-ade-prod \
-        --source-dataset ade_ms_api_vw \
-        --destination-project wmt-ade-agentspace-dev \
-        --destination-dataset ms_graph
+    python scripts/copy_bigquery_dataset.py [--overwrite]
+
+By default, the script copies the ``ade_ms_api_vw`` dataset from the
+``wmt-ebs-ade-prod`` project into the ``ms_graph`` dataset in the
+``wmt-ade-agentspace-dev`` project. Override the defaults by passing the
+corresponding CLI flags.
 
 The authenticated user/service account must have BigQuery Admin (or the
 combination of permissions required for listing tables in the source and
@@ -23,7 +26,7 @@ from typing import Iterable
 
 from google.api_core.exceptions import NotFound
 from google.cloud import bigquery
-from google.cloud.bigquery import CopyJobConfig
+from google.cloud.bigquery import CopyJobConfig, QueryJobConfig
 
 
 LOGGER = logging.getLogger(__name__)
@@ -33,23 +36,35 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--source-project",
-        required=True,
-        help="ID of the project that owns the source dataset.",
+        default="wmt-ebs-ade-prod",
+        help=(
+            "ID of the project that owns the source dataset (default: "
+            "wmt-ebs-ade-prod)."
+        ),
     )
     parser.add_argument(
         "--source-dataset",
-        required=True,
-        help="ID of the dataset that contains the tables to copy.",
+        default="ade_ms_api_vw",
+        help=(
+            "ID of the dataset that contains the tables to copy (default: "
+            "ade_ms_api_vw)."
+        ),
     )
     parser.add_argument(
         "--destination-project",
-        required=True,
-        help="ID of the project that should receive the copied tables.",
+        default="wmt-ade-agentspace-dev",
+        help=(
+            "ID of the project that should receive the copied tables (default: "
+            "wmt-ade-agentspace-dev)."
+        ),
     )
     parser.add_argument(
         "--destination-dataset",
-        required=True,
-        help="ID of the dataset that should receive the copied tables.",
+        default="ms_graph",
+        help=(
+            "ID of the dataset that should receive the copied tables (default: "
+            "ms_graph)."
+        ),
     )
     parser.add_argument(
         "--overwrite",
@@ -130,9 +145,45 @@ def copy_table(
     LOGGER.info("Finished copying %s", source_table_id)
 
 
+def materialize_view(
+    destination_client: bigquery.Client,
+    source_table_id: str,
+    destination_table_id: str,
+    overwrite: bool,
+) -> None:
+    """Create a table in the destination dataset with the view contents."""
+
+    LOGGER.info(
+        "Materializing view %s into table %s", source_table_id, destination_table_id
+    )
+
+    job_config = QueryJobConfig(
+        destination=destination_table_id,
+        write_disposition=(
+            bigquery.WriteDisposition.WRITE_TRUNCATE
+            if overwrite
+            else bigquery.WriteDisposition.WRITE_EMPTY
+        ),
+    )
+
+    query = f"SELECT * FROM `{source_table_id}`"
+    query_job = destination_client.query(query, job_config=job_config)
+    query_job.result()
+
+    LOGGER.info("Finished materializing view %s", source_table_id)
+
+
 def main() -> None:
     args = parse_args()
     logging.basicConfig(level=getattr(logging, args.log_level))
+
+    LOGGER.info(
+        "Copying dataset %s.%s -> %s.%s",
+        args.source_project,
+        args.source_dataset,
+        args.destination_project,
+        args.destination_dataset,
+    )
 
     source_client = bigquery.Client(project=args.source_project)
     destination_client = bigquery.Client(project=args.destination_project)
@@ -148,6 +199,25 @@ def main() -> None:
     for table in list_tables(source_client, source_dataset_ref):
         source_table_id = f"{source_dataset_ref}.{table.table_id}"
         destination_table_id = f"{destination_dataset_ref}.{table.table_id}"
+
+        table_type = getattr(table, "table_type", "TABLE")
+        if table_type.upper() == "VIEW":
+            try:
+                materialize_view(
+                    destination_client,
+                    source_table_id,
+                    destination_table_id,
+                    overwrite=args.overwrite,
+                )
+            except Exception as exc:  # pylint: disable=broad-except
+                LOGGER.error(
+                    "Failed to materialize view %s to %s: %s",
+                    source_table_id,
+                    destination_table_id,
+                    exc,
+                )
+                raise
+            continue
         try:
             copy_table(
                 source_client,
