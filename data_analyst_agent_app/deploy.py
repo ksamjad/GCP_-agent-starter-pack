@@ -49,6 +49,11 @@ flags.DEFINE_bool("quicktest", False, "Try a new deployment with one turn.")
 flags.DEFINE_bool("delete", False, "Deletes an existing deployment.")
 flags.DEFINE_bool("update", False, "Updates an existing deployment.")
 flags.mark_bool_flags_as_mutual_exclusive(["create", "delete", "update", "quicktest"])
+flags.DEFINE_string(
+    "message",
+    "What insights can you surface today?",
+    "Message to send when running --quicktest.",
+)
 
 
 def _resolve_env_vars() -> dict[str, str]:
@@ -110,6 +115,50 @@ def delete(resource_id: str) -> None:
     print(f"Deleted remote agent: {resource_id}")
 
 
+def _resolve_session_id(session: object) -> str:
+    """Extract a session identifier from the object returned by create_session."""
+
+    # The SDK may return either a proto message, a dataclass, or a mapping depending
+    # on the installed version. Try the common attributes first, then fall back to
+    # dictionary-style access so the helper works across environments.
+    for candidate in ("session_id", "id", "name"):
+        value = getattr(session, candidate, None)
+        if value:
+            return str(value)
+
+    if isinstance(session, dict) and session.get("id"):
+        return str(session["id"])
+
+    raise ValueError("Unable to determine session identifier from create_session().")
+
+
+def _print_event(event: object) -> None:
+    """Pretty print a streaming event for debugging purposes."""
+
+    event_type = getattr(event, "event_type", None)
+    header = f"[{event_type}]" if event_type else "[event]"
+
+    # Many streaming events expose a `text` or `content` attribute. Attempt the
+    # most descriptive representation we can find before falling back to repr().
+    if hasattr(event, "text") and getattr(event, "text"):
+        print(header, getattr(event, "text"))
+        return
+
+    if hasattr(event, "candidates") and getattr(event, "candidates"):
+        candidates = getattr(event, "candidates")
+        print(header, "candidates:")
+        for idx, candidate in enumerate(candidates, start=1):
+            text = getattr(candidate, "text", repr(candidate))
+            print(f"  {idx}. {text}")
+        return
+
+    if hasattr(event, "to_dict"):
+        print(header, event.to_dict())
+        return
+
+    print(header, repr(event))
+
+
 def send_message(resource_id: str, message: str) -> None:
     """Send a message to the deployed agent."""
 
@@ -117,13 +166,14 @@ def send_message(resource_id: str, message: str) -> None:
     session = remote_agent.create_session(
         user_id="data-analyst-user",
     )
+    session_id = _resolve_session_id(session)
     print(f"Trying remote agent: {resource_id}")
     for event in remote_agent.stream_query(
         user_id="data-analyst-user",
-        session_id=session["id"],
+        session_id=session_id,
         message=message,
     ):
-        print(event)
+        _print_event(event)
     print("Done.")
 
 
@@ -175,7 +225,7 @@ def main(argv: list[str]) -> None:
         if not FLAGS.resource_id:
             print("resource_id is required for quicktest")
             return
-        send_message(FLAGS.resource_id, "What insights can you surface today?")
+        send_message(FLAGS.resource_id, FLAGS.message)
     else:
         print("Unknown command")
 
