@@ -1,13 +1,42 @@
 """Deployment helper for the WMT data analyst agent."""
 
 import os
-
+from pathlib import Path
 from absl import app, flags
 from dotenv import load_dotenv
-from agent import root_agent
+try:
+    from data_analyst_agent_app.agent import root_agent
+except ModuleNotFoundError:  # pragma: no cover - fallback for script execution
+    from agent import root_agent
 import vertexai
 from vertexai import agent_engines
 from vertexai.preview.reasoning_engines import AdkApp
+
+
+_APP_ROOT = Path(__file__).resolve().parent
+
+
+def _default_extra_packages() -> list[str]:
+    """Return the files that must ship with the remote deployment."""
+
+    package_paths: list[Path] = [
+        _APP_ROOT / "__init__.py",
+        _APP_ROOT / "agent.py",
+        _APP_ROOT / "metadata_utils.py",
+    ]
+
+    metadata_dir = _APP_ROOT / "metadata"
+    if metadata_dir.exists():
+        package_paths.append(metadata_dir)
+
+    return [str(path) for path in package_paths if path.exists()]
+
+
+def _requirements_path() -> str:
+    """Return the path to the requirements file for the deployment."""
+
+    requirements_path = _APP_ROOT / "requirements.txt"
+    return str(requirements_path)
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("project_id", None, "GCP project ID.")
@@ -44,10 +73,10 @@ def create(env_vars: dict[str, str]) -> None:
 
     remote_agent = agent_engines.create(
         app_definition,
-        requirements="./requirements.txt",
-        extra_packages=[
-            "./agent.py",
-        ],
+        requirements=_requirements_path(),
+        extra_packages=_default_extra_packages(),
+        display_name="WMT Data Analyst Agent",
+        description="Metadata-aware analyst with British charm and dashboards.",
     )
     print(f"Created remote agent: {remote_agent.resource_name}")
 
@@ -64,12 +93,10 @@ def update(env_vars: dict[str, str], resource_id: str) -> None:
     agent_engines.update(
         resource_name=resource_id,
         agent_engine=app_definition,
-        requirements="./requirements.txt",
+        requirements=_requirements_path(),
         display_name="WMT Data Analyst Agent",
-        description="Multimodal analyst that combines SQL and Python for insights.",
-        extra_packages=[
-            "./agent.py",
-        ],
+        description="Metadata-aware analyst with British charm and dashboards.",
+        extra_packages=_default_extra_packages(),
     )
 
     print(f"Updated remote agent: {resource_id}")
