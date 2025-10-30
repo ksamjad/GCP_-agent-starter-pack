@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import Dict, List, Sequence
 
 from absl import app, flags
 from dotenv import load_dotenv
+
+if __package__ is None:
+    _current_dir = Path(__file__).resolve().parent
+    _package_root = _current_dir.parent
+    if str(_package_root) not in sys.path:
+        sys.path.insert(0, str(_package_root))
 
 try:
     from data_analyst_agent_app.agent import root_agent
