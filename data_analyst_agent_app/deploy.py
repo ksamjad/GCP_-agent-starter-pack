@@ -1,16 +1,55 @@
 """Deployment helper for the WMT data analyst agent."""
 
+from __future__ import annotations
+
 import os
+import sys
+from pathlib import Path
+from typing import Dict, List, Sequence
 
 from absl import app, flags
 from dotenv import load_dotenv
+
+if __package__ is None:
+    _current_dir = Path(__file__).resolve().parent
+    _package_root = _current_dir.parent
+    if str(_package_root) not in sys.path:
+        sys.path.insert(0, str(_package_root))
+
 try:
     from data_analyst_agent_app.agent import root_agent
 except ModuleNotFoundError:  # pragma: no cover - fallback for script execution
     from agent import root_agent
+
 import vertexai
 from vertexai import agent_engines
 from vertexai.preview.reasoning_engines import AdkApp
+
+
+_APP_ROOT = Path(__file__).resolve().parent
+
+
+def _default_extra_packages() -> List[str]:
+    """Return the files that must ship with the remote deployment."""
+
+    package_paths: List[Path] = [
+        _APP_ROOT / "__init__.py",
+        _APP_ROOT / "agent.py",
+        _APP_ROOT / "metadata_utils.py",
+    ]
+
+    metadata_dir = _APP_ROOT / "metadata"
+    if metadata_dir.exists():
+        package_paths.append(metadata_dir)
+
+    return [str(path) for path in package_paths if path.exists()]
+
+
+def _requirements_path() -> str:
+    """Return the path to the requirements file for the deployment."""
+
+    requirements_path = _APP_ROOT / "requirements.txt"
+    return str(requirements_path)
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("project_id", None, "GCP project ID.")
@@ -23,20 +62,25 @@ flags.DEFINE_bool("quicktest", False, "Try a new deployment with one turn.")
 flags.DEFINE_bool("delete", False, "Deletes an existing deployment.")
 flags.DEFINE_bool("update", False, "Updates an existing deployment.")
 flags.mark_bool_flags_as_mutual_exclusive(["create", "delete", "update", "quicktest"])
+flags.DEFINE_string(
+    "message",
+    "What insights can you surface today?",
+    "Message to send when running --quicktest.",
+)
 
 
-def _resolve_env_vars() -> dict[str, str]:
+def _resolve_env_vars() -> Dict[str, str]:
     """Populate deployment environment variables for the remote agent."""
 
-    env_vars: dict[str, str] = {}
     project_scope = os.getenv("DATA_ANALYST_PROJECT", "wmt-ade-agentspace-dev")
     location = os.getenv("BIGQUERY_LOCATION", "us")
-    env_vars["DATA_ANALYST_PROJECT"] = project_scope
-    env_vars["BIGQUERY_LOCATION"] = location
-    return env_vars
+    return {
+        "DATA_ANALYST_PROJECT": project_scope,
+        "BIGQUERY_LOCATION": location,
+    }
 
 
-def create(env_vars: dict[str, str]) -> None:
+def create(env_vars: Dict[str, str]) -> None:
     """Creates a new deployment."""
 
     app_definition = AdkApp(
@@ -47,15 +91,15 @@ def create(env_vars: dict[str, str]) -> None:
 
     remote_agent = agent_engines.create(
         app_definition,
-        requirements="./requirements.txt",
-        extra_packages=[
-            "./agent.py",
-        ],
+        requirements=_requirements_path(),
+        extra_packages=_default_extra_packages(),
+        display_name="WMT Data Analyst Agent",
+        description="Metadata-aware analyst with British charm and dashboards.",
     )
     print(f"Created remote agent: {remote_agent.resource_name}")
 
 
-def update(env_vars: dict[str, str], resource_id: str) -> None:
+def update(env_vars: Dict[str, str], resource_id: str) -> None:
     """Updates an existing deployment in-place."""
 
     app_definition = AdkApp(
@@ -67,12 +111,10 @@ def update(env_vars: dict[str, str], resource_id: str) -> None:
     agent_engines.update(
         resource_name=resource_id,
         agent_engine=app_definition,
-        requirements="./requirements.txt",
+        requirements=_requirements_path(),
         display_name="WMT Data Analyst Agent",
-        description="Multimodal analyst that combines SQL and Python for insights.",
-        extra_packages=[
-            "./agent.py",
-        ],
+        description="Metadata-aware analyst with British charm and dashboards.",
+        extra_packages=_default_extra_packages(),
     )
 
     print(f"Updated remote agent: {resource_id}")
@@ -86,6 +128,50 @@ def delete(resource_id: str) -> None:
     print(f"Deleted remote agent: {resource_id}")
 
 
+def _resolve_session_id(session: object) -> str:
+    """Extract a session identifier from the object returned by create_session."""
+
+    # The SDK may return either a proto message, a dataclass, or a mapping depending
+    # on the installed version. Try the common attributes first, then fall back to
+    # dictionary-style access so the helper works across environments.
+    for candidate in ("session_id", "id", "name"):
+        value = getattr(session, candidate, None)
+        if value:
+            return str(value)
+
+    if isinstance(session, dict) and session.get("id"):
+        return str(session["id"])
+
+    raise ValueError("Unable to determine session identifier from create_session().")
+
+
+def _print_event(event: object) -> None:
+    """Pretty print a streaming event for debugging purposes."""
+
+    event_type = getattr(event, "event_type", None)
+    header = f"[{event_type}]" if event_type else "[event]"
+
+    # Many streaming events expose a `text` or `content` attribute. Attempt the
+    # most descriptive representation we can find before falling back to repr().
+    if hasattr(event, "text") and getattr(event, "text"):
+        print(header, getattr(event, "text"))
+        return
+
+    if hasattr(event, "candidates") and getattr(event, "candidates"):
+        candidates = getattr(event, "candidates")
+        print(header, "candidates:")
+        for idx, candidate in enumerate(candidates, start=1):
+            text = getattr(candidate, "text", repr(candidate))
+            print(f"  {idx}. {text}")
+        return
+
+    if hasattr(event, "to_dict"):
+        print(header, event.to_dict())
+        return
+
+    print(header, repr(event))
+
+
 def send_message(resource_id: str, message: str) -> None:
     """Send a message to the deployed agent."""
 
@@ -93,17 +179,18 @@ def send_message(resource_id: str, message: str) -> None:
     session = remote_agent.create_session(
         user_id="data-analyst-user",
     )
+    session_id = _resolve_session_id(session)
     print(f"Trying remote agent: {resource_id}")
     for event in remote_agent.stream_query(
         user_id="data-analyst-user",
-        session_id=session["id"],
+        session_id=session_id,
         message=message,
     ):
-        print(event)
+        _print_event(event)
     print("Done.")
 
 
-def main(argv: list[str]) -> None:
+def main(argv: Sequence[str]) -> None:
     del argv
 
     load_dotenv()
@@ -151,7 +238,7 @@ def main(argv: list[str]) -> None:
         if not FLAGS.resource_id:
             print("resource_id is required for quicktest")
             return
-        send_message(FLAGS.resource_id, "What insights can you surface today?")
+        send_message(FLAGS.resource_id, FLAGS.message)
     else:
         print("Unknown command")
 

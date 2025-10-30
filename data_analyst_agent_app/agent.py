@@ -7,6 +7,7 @@ import builtins
 import contextlib
 import io
 import os
+import sys
 import textwrap
 import traceback
 from typing import Any
@@ -20,6 +21,14 @@ from google.adk.agents.llm_agent import Agent
 from google.adk.tools import FunctionTool
 from google.adk.tools.bigquery import BigQueryCredentialsConfig, BigQueryToolset
 from google.adk.tools.bigquery.config import BigQueryToolConfig, WriteMode
+
+if __package__ is None:
+    from pathlib import Path
+
+    _current_dir = Path(__file__).resolve().parent
+    _package_root = _current_dir.parent
+    if str(_package_root) not in sys.path:
+        sys.path.insert(0, str(_package_root))
 
 try:
     from data_analyst_agent_app.metadata_utils import (
