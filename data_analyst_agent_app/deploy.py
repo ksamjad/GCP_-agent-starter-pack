@@ -1,13 +1,19 @@
 """Deployment helper for the WMT data analyst agent."""
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
+from typing import List, Sequence
+
 from absl import app, flags
 from dotenv import load_dotenv
+
 try:
     from data_analyst_agent_app.agent import root_agent
 except ModuleNotFoundError:  # pragma: no cover - fallback for script execution
     from agent import root_agent
+
 import vertexai
 from vertexai import agent_engines
 from vertexai.preview.reasoning_engines import AdkApp
@@ -16,10 +22,10 @@ from vertexai.preview.reasoning_engines import AdkApp
 _APP_ROOT = Path(__file__).resolve().parent
 
 
-def _default_extra_packages() -> list[str]:
+def _default_extra_packages() -> List[str]:
     """Return the files that must ship with the remote deployment."""
 
-    package_paths: list[Path] = [
+    package_paths: List[Path] = [
         _APP_ROOT / "__init__.py",
         _APP_ROOT / "agent.py",
         _APP_ROOT / "metadata_utils.py",
@@ -177,7 +183,7 @@ def send_message(resource_id: str, message: str) -> None:
     print("Done.")
 
 
-def main(argv: list[str]) -> None:
+def main(argv: Sequence[str]) -> None:
     del argv
 
     load_dotenv()
