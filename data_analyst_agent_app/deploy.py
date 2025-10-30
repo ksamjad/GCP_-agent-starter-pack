@@ -65,12 +65,12 @@ flags.DEFINE_string(
 def _resolve_env_vars() -> Dict[str, str]:
     """Populate deployment environment variables for the remote agent."""
 
-    env_vars: Dict[str, str] = {}
     project_scope = os.getenv("DATA_ANALYST_PROJECT", "wmt-ade-agentspace-dev")
     location = os.getenv("BIGQUERY_LOCATION", "us")
-    env_vars["DATA_ANALYST_PROJECT"] = project_scope
-    env_vars["BIGQUERY_LOCATION"] = location
-    return env_vars
+    return {
+        "DATA_ANALYST_PROJECT": project_scope,
+        "BIGQUERY_LOCATION": location,
+    }
 
 
 def create(env_vars: Dict[str, str]) -> None:
