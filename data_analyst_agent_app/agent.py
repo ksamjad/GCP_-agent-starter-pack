@@ -37,6 +37,13 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for script execution
         route_question_to_dataset,
         summarise_metadata_for_prompt,
     )
+from data_analyst_agent_app.metadata_utils import (
+    create_dashboard_plan,
+    get_dataset_metadata,
+    get_table_metadata,
+    route_question_to_dataset,
+    summarise_metadata_for_prompt,
+)
 
 load_dotenv()
 
