@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import List, Sequence
+from typing import Dict, List, Sequence
 
 from absl import app, flags
 from dotenv import load_dotenv
@@ -62,10 +62,10 @@ flags.DEFINE_string(
 )
 
 
-def _resolve_env_vars() -> dict[str, str]:
+def _resolve_env_vars() -> Dict[str, str]:
     """Populate deployment environment variables for the remote agent."""
 
-    env_vars: dict[str, str] = {}
+    env_vars: Dict[str, str] = {}
     project_scope = os.getenv("DATA_ANALYST_PROJECT", "wmt-ade-agentspace-dev")
     location = os.getenv("BIGQUERY_LOCATION", "us")
     env_vars["DATA_ANALYST_PROJECT"] = project_scope
@@ -73,7 +73,7 @@ def _resolve_env_vars() -> dict[str, str]:
     return env_vars
 
 
-def create(env_vars: dict[str, str]) -> None:
+def create(env_vars: Dict[str, str]) -> None:
     """Creates a new deployment."""
 
     app_definition = AdkApp(
@@ -92,7 +92,7 @@ def create(env_vars: dict[str, str]) -> None:
     print(f"Created remote agent: {remote_agent.resource_name}")
 
 
-def update(env_vars: dict[str, str], resource_id: str) -> None:
+def update(env_vars: Dict[str, str], resource_id: str) -> None:
     """Updates an existing deployment in-place."""
 
     app_definition = AdkApp(
