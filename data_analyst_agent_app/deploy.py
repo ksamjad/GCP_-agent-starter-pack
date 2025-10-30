@@ -4,7 +4,10 @@ import os
 
 from absl import app, flags
 from dotenv import load_dotenv
-from agent import root_agent
+try:
+    from data_analyst_agent_app.agent import root_agent
+except ModuleNotFoundError:  # pragma: no cover - fallback for script execution
+    from agent import root_agent
 import vertexai
 from vertexai import agent_engines
 from vertexai.preview.reasoning_engines import AdkApp
