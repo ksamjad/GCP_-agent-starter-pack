@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "wheel", "build"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bq-agent-app"
+name = "winsights_agent"
 version = "0.1.0"
-description = "BigQuery agent for wmt-ade-agentspace-dev (Winsights)"
+description = "Flattened BigQuery agent (Winsights)"
 authors = [{name="Samjad Azeez"}]
 requires-python = ">=3.10"
 dependencies = [
