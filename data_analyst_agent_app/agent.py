@@ -7,6 +7,7 @@ import builtins
 import contextlib
 import io
 import os
+import sys
 import textwrap
 import traceback
 from typing import Any
@@ -21,6 +22,33 @@ from google.adk.tools import FunctionTool
 from google.adk.tools.bigquery import BigQueryCredentialsConfig, BigQueryToolset
 from google.adk.tools.bigquery.config import BigQueryToolConfig, WriteMode
 
+<<<<<<< HEAD
+=======
+if __package__ is None:
+    from pathlib import Path
+
+    _current_dir = Path(__file__).resolve().parent
+    _package_root = _current_dir.parent
+    if str(_package_root) not in sys.path:
+        sys.path.insert(0, str(_package_root))
+
+try:
+    from data_analyst_agent_app.metadata_utils import (
+        create_dashboard_plan,
+        get_dataset_metadata,
+        get_table_metadata,
+        route_question_to_dataset,
+        summarise_metadata_for_prompt,
+    )
+except ModuleNotFoundError:  # pragma: no cover - fallback for script execution
+    from metadata_utils import (
+        create_dashboard_plan,
+        get_dataset_metadata,
+        get_table_metadata,
+        route_question_to_dataset,
+        summarise_metadata_for_prompt,
+    )
+>>>>>>> 053d79e5652e52b720dbaa5a481f0243cfa6415c
 from data_analyst_agent_app.metadata_utils import (
     create_dashboard_plan,
     get_dataset_metadata,
