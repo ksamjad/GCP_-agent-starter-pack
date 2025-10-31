@@ -5,7 +5,7 @@
 # Install dependencies using uv package manager
 install:
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.8.13/install.sh | sh; source $HOME/.local/bin/env; }
-	uv sync --dev --extra streamlit
+	uv sync --dev
 
 # ==============================================================================
 # Playground Targets
@@ -16,40 +16,22 @@ playground:
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"
-	@echo "| 💡 Try asking: How can you help?|"
+	@echo "| 💡 Try asking: What can you help me with?|"
+	@echo "|                                                                             |"
+	@echo "| 🔍 IMPORTANT: Select the 'test_a2a' folder to interact with your agent.          |"
 	@echo "==============================================================================="
-	uv run uvicorn test_langgraph.server:app --host localhost --port 8000 --reload &
-	uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
-
-# ==============================================================================
-# Local Development Commands
-# ==============================================================================
-
-# Launch local development server with hot-reload
-local-backend:
-	uv run uvicorn test_langgraph.server:app --host localhost --port 8000 --reload
+	uv run adk web . --port 8501 --reload_agents
 
 # ==============================================================================
 # Backend Deployment Targets
 # ==============================================================================
 
 # Deploy the agent remotely
-# Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
 deploy:
-	PROJECT_ID=$$(gcloud config get-value project) && \
-	gcloud beta run deploy test-langgraph \
-		--source . \
-		--memory "4Gi" \
-		--project $$PROJECT_ID \
-		--region "us-central1" \
-		--no-allow-unauthenticated \
-		--no-cpu-throttling \
-		--labels "" \
-		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
-		--set-env-vars \
-		"COMMIT_SHA=$(shell git rev-parse HEAD)" \
-		$(if $(IAP),--iap) \
-		$(if $(PORT),--port=$(PORT))
+	# Export dependencies to requirements file using uv export.
+	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
+	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt) && \
+	uv run -m test_a2a.agent_engine_app
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
@@ -79,3 +61,13 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run mypy .
+
+# ==============================================================================
+# Gemini Enterprise Integration
+# ==============================================================================
+
+# Register the deployed agent to Gemini Enterprise
+# Usage: ID="projects/.../engines/xxx" make register-gemini-enterprise
+# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
+register-gemini-enterprise:
+	uvx --from agent-starter-pack agent-starter-pack-register-gemini-enterprise

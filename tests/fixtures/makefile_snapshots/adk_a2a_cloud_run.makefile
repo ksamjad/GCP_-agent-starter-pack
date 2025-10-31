@@ -5,7 +5,7 @@
 # Install dependencies using uv package manager
 install:
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.8.13/install.sh | sh; source $HOME/.local/bin/env; }
-	uv sync --dev --extra streamlit
+	uv sync --dev
 
 # ==============================================================================
 # Playground Targets
@@ -16,10 +16,11 @@ playground:
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"
-	@echo "| 💡 Try asking: How can you help?|"
+	@echo "| 💡 Try asking: What can you help me with?|"
+	@echo "|                                                                             |"
+	@echo "| 🔍 IMPORTANT: Select the 'test_a2a' folder to interact with your agent.          |"
 	@echo "==============================================================================="
-	uv run uvicorn test_langgraph.server:app --host localhost --port 8000 --reload &
-	uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
+	uv run adk web . --port 8501 --reload_agents
 
 # ==============================================================================
 # Local Development Commands
@@ -27,7 +28,7 @@ playground:
 
 # Launch local development server with hot-reload
 local-backend:
-	uv run uvicorn test_langgraph.server:app --host localhost --port 8000 --reload
+	uv run uvicorn test_a2a.server:app --host localhost --port 8000 --reload
 
 # ==============================================================================
 # Backend Deployment Targets
@@ -37,17 +38,18 @@ local-backend:
 # Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
 deploy:
 	PROJECT_ID=$$(gcloud config get-value project) && \
-	gcloud beta run deploy test-langgraph \
+	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)") && \
+	gcloud beta run deploy test-a2a \
 		--source . \
 		--memory "4Gi" \
 		--project $$PROJECT_ID \
 		--region "us-central1" \
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
-		--labels "" \
+		--labels "created-by=adk" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
 		--set-env-vars \
-		"COMMIT_SHA=$(shell git rev-parse HEAD)" \
+		"COMMIT_SHA=$(shell git rev-parse HEAD),APP_URL=https://test-a2a-$$PROJECT_NUMBER.us-central1.run.app" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 
