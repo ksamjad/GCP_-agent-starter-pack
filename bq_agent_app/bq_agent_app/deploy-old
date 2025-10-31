@@ -1,19 +1,15 @@
 """Deployment helper for the WMT data analyst agent."""
 
-from __future__ import annotations
-
 import os
-from pathlib import Path
-from typing import Dict, Sequence
 
+from pathlib import Path
 from absl import app, flags
 from dotenv import load_dotenv
-
+from agent import root_agent
 try:
     from data_analyst_agent_app.agent import root_agent
-except ModuleNotFoundError:  # fallback for script execution
-    from data_analyst_agent_app.agent import root_agent
-
+except ModuleNotFoundError:  # pragma: no cover - fallback for script execution
+    from agent import root_agent
 import vertexai
 from vertexai import agent_engines
 from vertexai.preview.reasoning_engines import AdkApp
@@ -40,12 +36,10 @@ def _default_extra_packages() -> list[str]:
 
 def _requirements_path() -> str:
     """Return the path to the requirements file for the deployment."""
-    return str(_APP_ROOT / "requirements.txt")
 
+    requirements_path = _APP_ROOT / "requirements.txt"
+    return str(requirements_path)
 
-# ----------------------------------------------------------------------
-# Flag Definitions
-# ----------------------------------------------------------------------
 FLAGS = flags.FLAGS
 flags.DEFINE_string("project_id", None, "GCP project ID.")
 flags.DEFINE_string("location", None, "GCP location.")
@@ -64,13 +58,10 @@ flags.DEFINE_string(
 )
 
 
-# ----------------------------------------------------------------------
-# Environment & Deployment Logic
-# ----------------------------------------------------------------------
-def _resolve_env_vars() -> Dict[str, str]:
+def _resolve_env_vars() -> dict[str, str]:
     """Populate deployment environment variables for the remote agent."""
 
-    env_vars: Dict[str, str] = {}
+    env_vars: dict[str, str] = {}
     project_scope = os.getenv("DATA_ANALYST_PROJECT", "wmt-ade-agentspace-dev")
     location = os.getenv("BIGQUERY_LOCATION", "us")
     env_vars["DATA_ANALYST_PROJECT"] = project_scope
@@ -78,7 +69,7 @@ def _resolve_env_vars() -> Dict[str, str]:
     return env_vars
 
 
-def create(env_vars: Dict[str, str]) -> None:
+def create(env_vars: dict[str, str]) -> None:
     """Creates a new deployment."""
 
     app_definition = AdkApp(
@@ -89,15 +80,19 @@ def create(env_vars: Dict[str, str]) -> None:
 
     remote_agent = agent_engines.create(
         app_definition,
+        requirements="./requirements.txt",
+        extra_packages=[
+            "./agent.py",
+        ],
         requirements=_requirements_path(),
         extra_packages=_default_extra_packages(),
         display_name="WMT Data Analyst Agent",
         description="Metadata-aware analyst with British charm and dashboards.",
     )
-    print(f"✅ Created remote agent: {remote_agent.resource_name}")
+    print(f"Created remote agent: {remote_agent.resource_name}")
 
 
-def update(env_vars: Dict[str, str], resource_id: str) -> None:
+def update(env_vars: dict[str, str], resource_id: str) -> None:
     """Updates an existing deployment in-place."""
 
     app_definition = AdkApp(
@@ -109,13 +104,18 @@ def update(env_vars: Dict[str, str], resource_id: str) -> None:
     agent_engines.update(
         resource_name=resource_id,
         agent_engine=app_definition,
+        requirements="./requirements.txt",
         requirements=_requirements_path(),
         display_name="WMT Data Analyst Agent",
+        description="Multimodal analyst that combines SQL and Python for insights.",
+        extra_packages=[
+            "./agent.py",
+        ],
         description="Metadata-aware analyst with British charm and dashboards.",
         extra_packages=_default_extra_packages(),
     )
 
-    print(f"✅ Updated remote agent: {resource_id}")
+    print(f"Updated remote agent: {resource_id}")
 
 
 def delete(resource_id: str) -> None:
@@ -123,12 +123,15 @@ def delete(resource_id: str) -> None:
 
     remote_agent = agent_engines.get(resource_id)
     remote_agent.delete(force=True)
-    print(f"🗑️ Deleted remote agent: {resource_id}")
+    print(f"Deleted remote agent: {resource_id}")
 
 
 def _resolve_session_id(session: object) -> str:
     """Extract a session identifier from the object returned by create_session."""
 
+    # The SDK may return either a proto message, a dataclass, or a mapping depending
+    # on the installed version. Try the common attributes first, then fall back to
+    # dictionary-style access so the helper works across environments.
     for candidate in ("session_id", "id", "name"):
         value = getattr(session, candidate, None)
         if value:
@@ -146,6 +149,8 @@ def _print_event(event: object) -> None:
     event_type = getattr(event, "event_type", None)
     header = f"[{event_type}]" if event_type else "[event]"
 
+    # Many streaming events expose a `text` or `content` attribute. Attempt the
+    # most descriptive representation we can find before falling back to repr().
     if hasattr(event, "text") and getattr(event, "text"):
         print(header, getattr(event, "text"))
         return
@@ -169,45 +174,46 @@ def send_message(resource_id: str, message: str) -> None:
     """Send a message to the deployed agent."""
 
     remote_agent = agent_engines.get(resource_id)
-    session = remote_agent.create_session(user_id="data-analyst-user")
+    session = remote_agent.create_session(
+        user_id="data-analyst-user",
+    )
     session_id = _resolve_session_id(session)
-
-    print(f"🔍 Trying remote agent: {resource_id}")
+    print(f"Trying remote agent: {resource_id}")
     for event in remote_agent.stream_query(
         user_id="data-analyst-user",
+        session_id=session["id"],
         session_id=session_id,
         message=message,
     ):
+        print(event)
         _print_event(event)
+    print("Done.")
 
-    print("✅ Done.")
 
-
-# ----------------------------------------------------------------------
-# Main Entrypoint
-# ----------------------------------------------------------------------
-def main(argv: Sequence[str]) -> None:
+def main(argv: list[str]) -> None:
     del argv
 
     load_dotenv()
     env_vars = _resolve_env_vars()
 
-    project_id = FLAGS.project_id or os.getenv("GOOGLE_CLOUD_PROJECT")
-    location = FLAGS.location or os.getenv("GOOGLE_CLOUD_LOCATION")
-    bucket = FLAGS.bucket or os.getenv("GOOGLE_CLOUD_STORAGE_BUCKET")
+    project_id = (
+        FLAGS.project_id if FLAGS.project_id else os.getenv("GOOGLE_CLOUD_PROJECT")
+    )
+    location = FLAGS.location if FLAGS.location else os.getenv("GOOGLE_CLOUD_LOCATION")
+    bucket = FLAGS.bucket if FLAGS.bucket else os.getenv("GOOGLE_CLOUD_STORAGE_BUCKET")
 
     print(f"PROJECT: {project_id}")
     print(f"LOCATION: {location}")
     print(f"BUCKET: {bucket}")
 
     if not project_id:
-        print("❌ Missing required environment variable: GOOGLE_CLOUD_PROJECT")
+        print("Missing required environment variable: GOOGLE_CLOUD_PROJECT")
         return
     if not location:
-        print("❌ Missing required environment variable: GOOGLE_CLOUD_LOCATION")
+        print("Missing required environment variable: GOOGLE_CLOUD_LOCATION")
         return
-    if not bucket:
-        print("❌ Missing required environment variable: GOOGLE_CLOUD_STORAGE_BUCKET")
+@@ -126,32 +203,32 @@ def main(argv: list[str]) -> None:
+        print("Missing required environment variable: GOOGLE_CLOUD_STORAGE_BUCKET")
         return
 
     vertexai.init(
@@ -220,21 +226,22 @@ def main(argv: Sequence[str]) -> None:
         create(env_vars)
     elif FLAGS.delete:
         if not FLAGS.resource_id:
-            print("❌ resource_id is required for delete")
+            print("resource_id is required for delete")
             return
         delete(FLAGS.resource_id)
     elif FLAGS.update:
         if not FLAGS.resource_id:
-            print("❌ resource_id is required for update")
+            print("resource_id is required for update")
             return
         update(env_vars, FLAGS.resource_id)
     elif FLAGS.quicktest:
         if not FLAGS.resource_id:
-            print("❌ resource_id is required for quicktest")
+            print("resource_id is required for quicktest")
             return
+        send_message(FLAGS.resource_id, "What insights can you surface today?")
         send_message(FLAGS.resource_id, FLAGS.message)
     else:
-        print("⚠️ Unknown command. Use --create, --update, --delete, or --quicktest.")
+        print("Unknown command")
 
 
 if __name__ == "__main__":

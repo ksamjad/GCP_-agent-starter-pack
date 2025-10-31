@@ -21,22 +21,6 @@ from google.adk.tools import FunctionTool
 from google.adk.tools.bigquery import BigQueryCredentialsConfig, BigQueryToolset
 from google.adk.tools.bigquery.config import BigQueryToolConfig, WriteMode
 
-try:
-    from data_analyst_agent_app.metadata_utils import (
-        create_dashboard_plan,
-        get_dataset_metadata,
-        get_table_metadata,
-        route_question_to_dataset,
-        summarise_metadata_for_prompt,
-    )
-except ModuleNotFoundError:  # pragma: no cover - fallback for script execution
-    from metadata_utils import (
-        create_dashboard_plan,
-        get_dataset_metadata,
-        get_table_metadata,
-        route_question_to_dataset,
-        summarise_metadata_for_prompt,
-    )
 from data_analyst_agent_app.metadata_utils import (
     create_dashboard_plan,
     get_dataset_metadata,
@@ -49,7 +33,7 @@ load_dotenv()
 
 CREDENTIALS_TYPE = os.getenv("CREDENTIALS_TYPE", "ADC").upper()
 DEFAULT_PROJECT_ID = os.getenv("DATA_ANALYST_PROJECT", "wmt-ade-agentspace-dev")
-DEFAULT_LOCATION = os.getenv("BIGQUERY_LOCATION", "us")
+DEFAULT_LOCATION = os.getenv("BIGQUERY_LOCATION", "us-central1")
 
 
 def _build_safe_globals() -> dict[str, Any]:
