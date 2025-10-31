@@ -5,4 +5,5 @@ pandas
 numpy
 matplotlib
 plotly
-python==3.12
+pydantic
+cloudpickle

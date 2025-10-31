@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bq-agent-app"
+version = "0.1.0"
+description = "BigQuery agent for wmt-ade-agentspace-dev (Winsights)"
+authors = [{name="Samjad Azeez"}]
+requires-python = ">=3.10"
+dependencies = [
+  "absl-py",
+  "google-adk",
+  "google-cloud-aiplatform",
+  "python-dotenv",
+  "pandas",
+  "numpy",
+  "matplotlib",
+  "plotly",
+]
