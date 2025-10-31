@@ -1,4 +1,8 @@
 absl-py
 google-adk
 google-cloud-aiplatform
+pandas
+numpy
+matplotlib
+plotly
 python==3.12
