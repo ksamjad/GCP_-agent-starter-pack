@@ -11,7 +11,7 @@ DISPLAY_NAME = "Data Analyst Agent v1.1"  # Replace with your desired display na
 DESCRIPTION = "ADK agent from London to perform Data Analysis and Insights"  # Replace with your desired description
 TOOL_DESCRIPTION = "The agent can access bigquery datasets and tables, run queries and provide insights"  # Replace with your tool description
 # ADK_DEPLOYMENT_ID = "6386900318029873152"  # Replace with your ADK deployment ID
-ADK_DEPLOYMENT_ID = "4456580112120283136"  # OAUTH TEsting
+ADK_DEPLOYMENT_ID = "6005818383935733760"  # OAUTH TEsting
 LOCATION = "us"  # Define the location variable
 # AUTH_ID = "MyOAuthID_ADKBQToolsOAUTHtest"  # Replace with your authorization ID
 # --- End Configuration ---
@@ -51,9 +51,9 @@ def create_agent():
     """
     Creates an agent using the Google Discovery Engine API.
     """
-    access_token = get_gcloud_access_token()
+    #access_token = get_gcloud_access_token()
     # Hardcoded token for testing - comment out get_gcloud_access_token() call above if using this
-    #access_token = "ya29.a0ATi6K2vIlYsu0ypRMEn9G5vd6MnAwnQBteo40VhGEkKcEAvxTWd_YZXLDWMB_MDteACBrU4tlfwtX6AM_UJvsh8d3qVrkGZvvIMg1eA5-EXRqYfcMbx4baSZ1iKyM2DNL1E0qbn18HEtYIrrcB9hvSlyZTPOpvaNYQ_wbdO2jLPSL6tHTapEk4pBtvVW-bOnDNtcgreYKm_w8AaCgYKASoSARYSFQHGX2MiH8Rio0wmf7QvYx__-5NdKA0213"
+    access_token = "ya29.a0ATi6K2tADRfdtml0OUhOXVfOlga-O2v-0G4ynpT4uzioCqLBeYfcZmm4otj-7vH4nPPlFf8mmhrDHfBpnGJYzykMq8wnH93Jp6VA2L31fLnrK_1gdgxQlqQHJNUBzr5wUy7zfaQqgvbzqbfVXXYNouriyrQVJluYUZaY9IlbmwjXv9papay0MsLKuKTJkxt5PEP2D4FcJeyQBwaCgYKAT4SARYSFQHGX2MiYNy2pg9m0XfbkNirCk5vOA0213"
 
     if not access_token:
         print("Failed to obtain access token. Exiting.")
