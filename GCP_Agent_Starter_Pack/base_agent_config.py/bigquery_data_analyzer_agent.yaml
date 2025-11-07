@@ -1,0 +1,13 @@
+name: bigquery_data_analyzer
+type: BigQueryDataAnalyzerAgent
+description: "Agent for analyzing BigQuery data, creating dashboards and providing downloadable reports."
+project_id: ${GOOGLE_CLOUD_PROJECT}
+default_dataset: ${BQ_DEFAULT_DATASET}
+credentials_path: ${GOOGLE_APPLICATION_CREDENTIALS}
+output_gcs_path: ${OUTPUT_GCS_PATH}
+cloud_location: ${GOOGLE_CLOUD_LOCATION}
+
+# Optional: You can include fields for tools, callbacks, or ADK plugins as needed.
+tools: []
+before_agent_callbacks: []
+after_agent_callbacks: []

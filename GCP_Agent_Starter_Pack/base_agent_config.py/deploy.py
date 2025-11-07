@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import vertexai
 from vertexai import agent_engines
 from vertexai.preview.reasoning_engines import AdkApp
-from Backup.agent import root_agent
+from agents.bigquery_data_analyzer_agent import root_agent  # Updated import
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("project_id", None, "GCP project ID.")
@@ -23,15 +23,15 @@ flags.mark_bool_flags_as_mutual_exclusive(["create", "delete", "update", "quickt
 def create(env_vars: dict[str, str]) -> None:
     """Creates a new deployment."""
     print("🚀 Creating new Vertex Agent Engine deployment...")
-    app = AdkApp(
+    app_instance = AdkApp(
         agent=root_agent,
         enable_tracing=True,
         env_vars=env_vars,
     )
     remote_agent = agent_engines.create(
-        app,
+        app_instance,
         requirements="./requirements.txt",
-        extra_packages=["./agent.py"],
+        extra_packages=["./agents/bigquery_data_analyzer_agent.py"],
     )
     print(f"✅ Created remote agent: {remote_agent.resource_name}")
 
@@ -39,18 +39,18 @@ def create(env_vars: dict[str, str]) -> None:
 def update(env_vars: dict[str, str], resource_id: str) -> None:
     """Updates an existing deployment."""
     print(f"🔄 Updating agent {resource_id} ...")
-    app = AdkApp(
+    app_instance = AdkApp(
         agent=root_agent,
         enable_tracing=True,
         env_vars=env_vars,
     )
     agent_engines.update(
         resource_name=resource_id,
-        agent_engine=app,
+        agent_engine=app_instance,
         requirements="./requirements.txt",
-        display_name="Fresh Waste Agent",
-        description="Agent generates waste insights",
-        extra_packages=["./agent.py"],
+        display_name="BigQuery Data Analyzer Agent",
+        description="Agent for BigQuery analytics, dashboards, and reports.",
+        extra_packages=["./agents/bigquery_data_analyzer_agent.py"],
     )
     print(f"✅ Updated remote agent: {resource_id}")
 
@@ -77,6 +77,9 @@ def main(argv: list[str]) -> None:
         "GOOGLE_CLOUD_PROJECT": os.getenv("GOOGLE_CLOUD_PROJECT"),
         "GOOGLE_CLOUD_LOCATION": os.getenv("GOOGLE_CLOUD_LOCATION"),
         "GOOGLE_CLOUD_STORAGE_BUCKET": os.getenv("GOOGLE_CLOUD_STORAGE_BUCKET"),
+        "OUTPUT_GCS_PATH": os.getenv("OUTPUT_GCS_PATH"),
+        "BQ_AGENT_CREDENTIALS": os.getenv("BQ_AGENT_CREDENTIALS"),
+        "DEFAULT_PROJECT_ID": os.getenv("DEFAULT_PROJECT_ID"),
     }
 
     project_id = FLAGS.project_id or env_vars["GOOGLE_CLOUD_PROJECT"]

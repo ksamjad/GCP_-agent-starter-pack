@@ -1,72 +1,72 @@
 """
-💙 Walmart Customer Care BigQuery Agent v2.0
----------------------------------------------
-An upgraded data assistant that:
- - Queries BigQuery in read-only mode
- - Restricts access to project: wmt-ade-agentspace-dev
- - Generates charts (matplotlib)
- - Generates custom images via Gemini (GoogleTool)
- - Speaks in a friendly, professional Walmart tone
+British BigQuery Agent (Vertex ADC Version)
+-------------------------------------------
+This agent uses Application Default Credentials (ADC) from the Vertex AI runtime
+to securely query BigQuery in read-only mode.
+
+This modified version includes a GCS path for query result file outputs,
+which enables downloadable files for the end-user.
 """
 
 import os
 import json
-import io
-import warnings
 import google.auth
-import matplotlib.pyplot as plt
-from PIL import Image
 from dotenv import load_dotenv
-
-# -------------------------------------------------
-# SUPPRESS EXPERIMENTAL WARNINGS (safe)
-# -------------------------------------------------
-warnings.filterwarnings("ignore", message=r"\[EXPERIMENTAL\]")
-
-# -------------------------------------------------
-# GOOGLE ADK IMPORTS
-# -------------------------------------------------
 from google.adk.agents.llm_agent import Agent
 from google.adk.tools.bigquery import BigQueryToolset
 from google.adk.tools.bigquery.config import BigQueryToolConfig, WriteMode
 from google.adk.tools.bigquery import BigQueryCredentialsConfig
-from google.adk.tools.function_tool import FunctionTool
-from google.adk.tools.google_tool import GoogleTool
 
-# -------------------------------------------------
-# ENVIRONMENT & AUTH CONFIGURATION
-# -------------------------------------------------
+# --------------------- CONFIG ---------------------
 load_dotenv()
 
-PROJECT_RESTRICTION = "wmt-ade-agentspace-dev"
-CREDENTIALS_TYPE = os.getenv("CREDENTIALS_TYPE", "ADC")
+# Credential type: ADC | SERVICE_ACCOUNT | OAUTH2
+CREDENTIALS_TYPE = os.getenv("CREDENTIALS_TYPE", os.getenv("BQ_AGENT_CREDENTIALS", "ADC"))
 CLIENT_ID = os.getenv("OAUTH_CLIENT_ID")
 CLIENT_SECRET = os.getenv("OAUTH_CLIENT_SECRET")
 
-tool_config = BigQueryToolConfig(write_mode=WriteMode.BLOCKED)
+# --- NEW: GCS Path for File Outputs ---
+# This GCS path is the backend staging area for large query results.
+# The ADK framework will automatically create secure, temporary download
+# links for the user, so they *do not* see the GCS bucket.
+OUTPUT_GCS_PATH = os.getenv("OUTPUT_GCS_PATH") # <-- NEW
+if not OUTPUT_GCS_PATH: # <-- NEW
+    print("⚠️  WARNING: OUTPUT_GCS_PATH is not set in environment variables.")
+    print("   Large query results will NOT be available as downloadable files.")
+    print("   To enable downloads, set: OUTPUT_GCS_PATH=gs://your-bucket/path")
+# ----------------------------------------
 
-# --- AUTHENTICATION ---
+# Read-only BigQuery mode + File Output Configuration
+tool_config = BigQueryToolConfig(
+    write_mode=WriteMode.BLOCKED,
+    output_gcs_uri=OUTPUT_GCS_PATH  # <-- MODIFIED
+)
+
+# --------------------- AUTHENTICATION ---------------------
 if CREDENTIALS_TYPE == "ADC":
+    # Use Vertex-provided service account credentials automatically
     creds, _ = google.auth.default()
     credentials_config = BigQueryCredentialsConfig(credentials=creds)
-    print("✅ Using Application Default Credentials (Vertex runtime).")
+    print("🔑 Using Application Default Credentials (Vertex runtime).")
+
 elif CREDENTIALS_TYPE == "SERVICE_ACCOUNT":
     creds, _ = google.auth.load_credentials_from_file("service_account_key.json")
     credentials_config = BigQueryCredentialsConfig(credentials=creds)
-    print("✅ Using Service Account credentials file.")
+    print("🔑 Using Service Account credentials file.")
+
 elif CREDENTIALS_TYPE == "OAUTH2":
     credentials_config = BigQueryCredentialsConfig(
-        client_id=CLIENT_ID, client_secret=CLIENT_SECRET
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
     )
-    print("✅ Using OAuth2 credentials flow.")
+    print("🔑 Using OAuth2 credentials flow.")
 else:
     raise ValueError(f"❌ Unknown CREDENTIALS_TYPE: {CREDENTIALS_TYPE}")
 
-# -------------------------------------------------
-# BIGQUERY TOOLSET
-# -------------------------------------------------
-bq = BigQueryToolset(
+# --------------------- BIGQUERY TOOLSET ---------------------
+bigquery_toolset = BigQueryToolset(
     credentials_config=credentials_config,
+    config=tool_config,  # <-- MODIFIED (pass the config object)
     tool_filter=[
         "list_dataset_ids",
         "get_dataset_info",
@@ -76,121 +76,61 @@ bq = BigQueryToolset(
     ],
 )
 
-# Restrict queries to project (case-insensitive)
-def safe_query(sql: str) -> str:
-    lowered = sql.lower()
-    if PROJECT_RESTRICTION not in lowered:
-        raise PermissionError(
-            f"⚠️ Access denied. Queries are restricted to project '{PROJECT_RESTRICTION}'."
-        )
-    return lowered
-
-def execute_sql(query: str):
-    safe = safe_query(query)
-    return bq.tools["execute_sql"].invoke(query=safe)
-
-# -------------------------------------------------
-# VISUALIZATION TOOL (matplotlib)
-# -------------------------------------------------
-def plot_bar_chart_tool(
-    data: list[float],
-    labels: list[str],
-    title: str = "Customer Satisfaction by Category",
-) -> bytes:
-    """
-    Generates a Walmart-branded bar chart and returns it as image bytes.
-    """
-    fig, ax = plt.subplots()
-    ax.bar(labels, data, color="#0071ce")  # Walmart blue
-    ax.set_title(title)
-    ax.set_ylabel("Score / Count")
-    ax.grid(axis="y", linestyle="--", alpha=0.7)
-    plt.tight_layout()
-
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png")
-    buf.seek(0)
-    print("📊 Chart generated successfully.")
-    return buf.getvalue()
-
-plot_bar_chart_tool = FunctionTool(plot_bar_chart_tool)
-
-# -------------------------------------------------
-# IMAGE GENERATION TOOL (Gemini)
-# -------------------------------------------------
-def generate_image(prompt: str):
-    """
-    Uses Gemini-powered GoogleTool for image generation.
-    Example: Walmart-branded illustrative visuals.
-    """
-    from google.adk.tools.google_tool import GoogleTool as GeminiTool
-    tool = GeminiTool(func=lambda p: f"🖼️ (Generated Walmart-style image for: {p})")
-    return tool.func(prompt)
-
-# Register with ADK
-image_toolset = GoogleTool(func=generate_image)
-
-# -------------------------------------------------
-# METADATA LOADER
-# -------------------------------------------------
+# --------------------- METADATA LOADER ---------------------
 def load_metadata_text():
-    folder = os.path.join(os.path.dirname(__file__), "metadata")
-    files = ["gt_wf_dataset_metadata.json", "ms_graph_dataset_metadata.json"]
-    parts = []
-    for f in files:
-        path = os.path.join(folder, f)
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as fh:
-                meta = json.load(fh)
-            parts.append(f"### {f}\n```json\n{json.dumps(meta, indent=2)}\n```")
-    return "\n\n".join(parts) or "No dataset metadata available."
+    """Load dataset metadata context from JSON files."""
+    metadata_folder = os.path.join(os.path.dirname(__file__), "metadata")
+    metadata_files = ["gt_wf_dataset_metadata.json", "ms_graph_dataset_metadata.json"]
+    metadata_context = []
+
+    for file_name in metadata_files:
+        file_path = os.path.join(metadata_folder, file_name)
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+            dataset_name = file_name.replace("_dataset_metadata.json", "")
+            summary = json.dumps(meta, indent=2)
+            metadata_context.append(f"### Dataset: {dataset_name}\n```json\n{summary}\n```")
+
+    if not metadata_context:
+        return "No metadata context found."
+
+    return "\n\n".join(metadata_context)
 
 metadata_text = load_metadata_text()
 
-# -------------------------------------------------
-# WALMART AGENT INSTRUCTIONS
-# -------------------------------------------------
-agent_instructions = f"""
-💙 **Welcome to Walmart Customer Care Data Assistant**
-
-You are a friendly, professional data analysis agent representing Walmart Customer Care.
-You help analyse BigQuery datasets, visualize insights, and generate clean, meaningful summaries.
-
-### 🎯 Responsibilities
-- Stay strictly within the project **{PROJECT_RESTRICTION}**.
-- Handle all SQL queries in a case-insensitive way.
-- Generate bar charts and visual summaries when helpful.
-- Always present findings clearly, politely, and helpfully.
-- You can generate and display both **charts** and **illustrative images**.
-
-### 🧩 Capabilities
-- Query BigQuery datasets and interpret customer or operational insights.
-- Create bar charts and summaries using the visualization tool.
-- Generate images using Walmart-branded Gemini capabilities.
-- Provide structured results and professional explanations.
-- Operate in read-only mode (no modifications or deletions).
-
-### 🗣️ Tone & Style
-- Friendly, clear, professional, and service-oriented.
-- Use phrases like:
-  - "Here’s what I found in our data."
-  - "Let me visualise that for you."
-  - "I’ve created a quick chart to make this clearer."
-- Avoid jargon. Always focus on customer clarity.
-
-### 📚 Dataset Context
-{metadata_text}
-"""
-
-# -------------------------------------------------
-# AGENT INITIALIZATION
-# -------------------------------------------------
+# --------------------- AGENT INITIALIZATION ---------------------
 root_agent = Agent(
-    model="gemini-2.5-flash",
-    name="walmart_customer_care_agent",
-    description="A Walmart data assistant that analyses BigQuery and generates charts or visuals for insights.",
-    instruction=agent_instructions,
-    tools=[bq, plot_bar_chart_tool, image_toolset],
+    model="gemini-1.5-flash",
+    name="british_bigquery_agent",
+    description="A British BigQuery agent with read-only access and metadata awareness.",
+    instruction=f"""
+    🇬🇧 You are a British data analysis agent who uses BigQuery to answer questions about data.
+    Always respond in polished British English — clear, formal, and professional.
+    Use British spelling (analyse, colour, organise, optimise).
+    Format dates as DD Month YYYY (e.g., 31 October 2025).
+
+    **Core Directives**
+    - Your **primary capability** is to execute SQL queries using your tools.
+    - You **must not** claim you "cannot" create files. Your tools handle this for you.
+    - When a query result is large, the `execute_sql` tool will automatically save it to a file and provide a download link. Your *only* job is to present this file link to the user.
+    - **Never** say "I am an AI assistant and do not have the capability to create... files." This is incorrect. You DO have this capability via your tools.
+    - **Never** apologize for truncation or claim the tool has a "maximum number of rows." If a result is large, you must state that the full results are available in the file you are providing.
+
+    **Capabilities**
+    - You can query BigQuery datasets the user has access to.
+    - You can describe dataset schemas and field meanings using metadata.
+    - You cannot modify or delete data (read-only mode).
+    - If a query produces many results, you **will** provide a downloadable file.
+
+    **Metadata Context**
+    This is contextual information about key datasets:
+
+    {metadata_text}
+    """,
+    tools=[bigquery_toolset],
 )
 
-print("💙 Walmart Customer Care Data Agent v2.0 initialized — ready to provide insights and visuals!")
+print("✅ British BigQuery Agent initialised successfully (ADC mode).")
+if OUTPUT_GCS_PATH: # <-- NEW
+    print(f"   📤 File downloads enabled, staging to: {OUTPUT_GCS_PATH}")

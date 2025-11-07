@@ -7,11 +7,11 @@ import sys
 # --- Configuration ---
 PROJECT_NUM = "362440398011"  # Replace with your GCP project ID
 APP_ID = "agentspace-walmartus_1754500138149"  # Replace with your App ID
-DISPLAY_NAME = "Data Analyst + Visualizer v1.1"  # Replace with your desired display name
-DESCRIPTION = "Wal-Mart Agent for perform Data Analysis and Insights"  # Replace with your desired description
-TOOL_DESCRIPTION = "The agent can access bigquery datasets and tables, run queries and provide insights+Diagrams"  # Replace with your tool description
+DISPLAY_NAME = "Data Analyst + Visualizer v1.2"  # Replace with your desired display name
+DESCRIPTION = "British Agent to perform Data Analysis and Insights"  # Replace with your desired description
+TOOL_DESCRIPTION = "The agent can access bigquery datasets and tables, run queries and provide insights+output files"  # Replace with your tool description
 # ADK_DEPLOYMENT_ID = "6386900318029873152"  # Replace with your ADK deployment ID
-ADK_DEPLOYMENT_ID = "1789604707786817536"  # OAUTH TEsting
+ADK_DEPLOYMENT_ID = "6310119222039019520"  # OAUTH TEsting
 LOCATION = "us"  # Define the location variable
 # AUTH_ID = "MyOAuthID_ADKBQToolsOAUTHtest"  # Replace with your authorization ID
 # --- End Configuration ---

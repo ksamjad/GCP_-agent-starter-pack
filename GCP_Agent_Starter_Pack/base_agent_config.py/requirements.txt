@@ -1,0 +1,14 @@
+absl-py
+google-adk
+google-cloud-aiplatform
+pandas
+numpy
+plotly
+##New##
+google-cloud-bigquery
+google-auth
+google-cloud-storage
+python-dotenv
+matplotlib
+pillow
+google-cloud-aiplatform>=1.64.0
