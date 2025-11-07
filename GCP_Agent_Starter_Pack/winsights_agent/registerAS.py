@@ -7,11 +7,11 @@ import sys
 # --- Configuration ---
 PROJECT_NUM = "362440398011"  # Replace with your GCP project ID
 APP_ID = "agentspace-walmartus_1754500138149"  # Replace with your App ID
-DISPLAY_NAME = "Data Analyst Agent v1.1"  # Replace with your desired display name
-DESCRIPTION = "ADK agent from London to perform Data Analysis and Insights"  # Replace with your desired description
-TOOL_DESCRIPTION = "The agent can access bigquery datasets and tables, run queries and provide insights"  # Replace with your tool description
+DISPLAY_NAME = "Data Analyst + Visualizer v1.1"  # Replace with your desired display name
+DESCRIPTION = "Wal-Mart Agent for perform Data Analysis and Insights"  # Replace with your desired description
+TOOL_DESCRIPTION = "The agent can access bigquery datasets and tables, run queries and provide insights+Diagrams"  # Replace with your tool description
 # ADK_DEPLOYMENT_ID = "6386900318029873152"  # Replace with your ADK deployment ID
-ADK_DEPLOYMENT_ID = "6005818383935733760"  # OAUTH TEsting
+ADK_DEPLOYMENT_ID = "1789604707786817536"  # OAUTH TEsting
 LOCATION = "us"  # Define the location variable
 # AUTH_ID = "MyOAuthID_ADKBQToolsOAUTHtest"  # Replace with your authorization ID
 # --- End Configuration ---
@@ -51,9 +51,9 @@ def create_agent():
     """
     Creates an agent using the Google Discovery Engine API.
     """
-    #access_token = get_gcloud_access_token()
+    access_token = get_gcloud_access_token()
     # Hardcoded token for testing - comment out get_gcloud_access_token() call above if using this
-    access_token = "ya29.a0ATi6K2tADRfdtml0OUhOXVfOlga-O2v-0G4ynpT4uzioCqLBeYfcZmm4otj-7vH4nPPlFf8mmhrDHfBpnGJYzykMq8wnH93Jp6VA2L31fLnrK_1gdgxQlqQHJNUBzr5wUy7zfaQqgvbzqbfVXXYNouriyrQVJluYUZaY9IlbmwjXv9papay0MsLKuKTJkxt5PEP2D4FcJeyQBwaCgYKAT4SARYSFQHGX2MiYNy2pg9m0XfbkNirCk5vOA0213"
+    #access_token = "ya29.a0ATi6K2t1EGnZnuYv7A0U_ZcgEyc36D6q7yG2_cMfqZQhpNvWrrrVMY7C1RKkkSpve65_YQDhw6lZndy5uvoduMCN3HSxJU2z4wB6l8EDMYsw4WUsW5cbWiun93uk3x0JTz1Kf-aWKJUUhm-NeHk9rKx203HF-zbOCWtj78C4OwCo_xE720Sf9_V3mbIh51t0EdRGQeDSRMYOaCgYKAe8SARYSFQHGX2MiuvvmWa00fQyJhcja9LakRA0211"
 
     if not access_token:
         print("Failed to obtain access token. Exiting.")
